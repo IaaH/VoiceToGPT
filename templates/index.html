@@ -3,18 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Speech to Text to GPT</title>
-    <script src="https://cdn.WebRTC-Experiment.com/RecordRTC.js"></script>
-
-
+    <title>ChatGPT Voice Assistant</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <button onclick="startRecording()">Start recording</button>
-    <button onclick="stopRecording()">Stop recording</button>
-    <p id="response"></p>
-    <script src="https://cdn.webrtc-experiment.com/MediaStreamRecorder.js"></script>
+    <h1>ChatGPT Voice Assistant</h1>
+    <button id="start-recording">Start Recording</button>
+    <button id="stop-recording" disabled>Stop Recording</button>
+    <button id="send-to-chatgpt" disabled>Send to ChatGPT</button>
+    <p id="text"></p>
+    <p id="answer"></p>
+    <script>
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        function startRecording() {
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = (e) => recordedChunks.push(e.data);
+                mediaRecorder.start();
+            });
+        }
+
+        function stopRecording() {
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'audio/wav; codecs=0' });
+                recordedChunks = [];
+                const formData = new FormData();
+                formData.append('file', blob); // Change this line
+
+                $.ajax({
+                    url: '/start_recording',
+                    type: 'POST',
+                    data: formData, // Change this line
+                    processData: false,
+                    contentType: false,
+                }).done(response => {
+                    $('#text').text(response.text);
+                    $('#send-to-chatgpt').prop('disabled', false).data('file-id', response.file_id);
+                }).fail(error => {
+                    alert(error.responseText);
+                });
+            };
+
+            mediaRecorder.stop();
+        }
 
 
-    <script src="{{ url_for('static', filename='main.js', _external=True) }}"></script>
+        function sendToChatGPT() {
+            const fileId = $('#send-to-chatgpt').data('file-id');
+
+            $.post('/send_to_chatgpt', { file_id: fileId }).done(response => {
+                $('#answer').text(response.answer);
+            }).fail(error => {
+                alert(error.responseText);
+            });
+        }
+
+        $(document).ready(function () {
+            $('#start-recording').click(() => {
+                startRecording();
+                $('#start-recording').prop('disabled', true);
+                $('#stop-recording').prop('disabled', false);
+            });
+
+            $('#stop-recording').click(() => {
+                stopRecording();
+                $('#start-recording').prop('disabled', false);
+                $('#stop-recording').prop('disabled', true);
+            });
+
+            $('#send-to-chatgpt').click(sendToChatGPT);
+        });
+    </script>
 </body>
 </html>
+

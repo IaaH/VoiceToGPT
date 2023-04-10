@@ -1,55 +1,64 @@
-from flask import Flask, render_template, request, jsonify
+import os
+import io
+import uuid
+import openai
 import speech_recognition as sr
-import requests
+from flask import Flask, render_template, request, jsonify
+from pydub import AudioSegment
+import io
 
 app = Flask(__name__)
-app.static_folder = 'static'
-API_KEY = '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'
+
+# Configure OpenAI API key
+openai.api_key = "your_openai_api_key"
 
 @app.route('/')
 def index():
-    print('start?')
     return render_template('index.html')
 
-@app.route('/api/voice-to-text', methods=['POST'])
-def voice_to_text():
-    print('voice to text')
-    recognizer = sr.Recognizer()
-    file = request.files['file']
-    with sr.AudioFile(file) as source:
-        audio = recognizer.record(source)
-    try:
-        text = recognizer.recognize_google(audio)
-        print('Recognized text:', text)
-        return jsonify({'text': text})
-    except sr.UnknownValueError:
-        return jsonify({'error': 'Speech recognition failed'}), 400
+@app.route('/start_recording', methods=['POST'])
+def start_recording():
+    voice_data = request.files['file']
+    voice_data.save("voice.wav")
 
+    # Convert the audio to the desired format
+    audio = AudioSegment.from_file("voice.wav")
+    audio = audio.set_frame_rate(16000).set_sample_width(2).set_channels(1)
+    byte_io = io.BytesIO()
+    audio.export(byte_io, format="wav")
+    byte_io.seek(0)
 
+    # Recognize the speech
+    r = sr.Recognizer()
+    with sr.AudioFile(byte_io) as source:
+        audio_data = r.record(source)
+    text = r.recognize_google(audio_data, language='en-US')
 
-def chat_gpt(prompt):
-    print('chat gpt')
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {API_KEY}'
+    # Replace this with the API call to GPT-3
+    response = {
+        "response": text
     }
+    return jsonify(response)
 
-    response = requests.post(
-        'https://api.openai.com/v1/engines/davinci-codex/completions',
-        headers=headers,
-        json={
-            'prompt': prompt,
-            'max_tokens': 100
-        }
+
+@app.route('/send_to_chatgpt', methods=['POST'])
+def send_to_chatgpt():
+    file_id = request.form['file_id']
+
+    with open(f"{file_id}.txt", "r") as text_file:
+        text = text_file.read()
+
+    response = openai.Completion.create(
+        engine="text-davinci-002",
+        prompt=text,
+        max_tokens=150,
+        n=1,
+        stop=None,
+        temperature=0.5,
     )
 
-    if response.status_code == 200:
-        result = response.json()['choices'][0]['text']
-        print("GPT-4 Response:", result)
-        return jsonify({'text': prompt, 'result': result})
-    else:
-        return jsonify({'error': 'GPT API call failed'}), 400
+    answer = response.choices[0].text.strip()
+    return jsonify({"answer": answer})
 
 if __name__ == '__main__':
-    print('main')
     app.run(debug=True)
