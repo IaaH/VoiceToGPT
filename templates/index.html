@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech to Text to GPT</title>
+    <script src="https://cdn.WebRTC-Experiment.com/RecordRTC.js"></script>
+
+
+</head>
+<body>
+    <button onclick="startRecording()">Start recording</button>
+    <button onclick="stopRecording()">Stop recording</button>
+    <p id="response"></p>
+    <script src="https://cdn.webrtc-experiment.com/MediaStreamRecorder.js"></script>
+
+
+    <script src="{{ url_for('static', filename='main.js', _external=True) }}"></script>
+</body>
+</html>
