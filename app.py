@@ -2,6 +2,11 @@ import io
 import openai
 import speech_recognition as sr
 from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify
+import uuid
+import os
+import speech_recognition as sr
+from pydub import AudioSegment
 
 app = Flask(__name__)
 
@@ -16,23 +21,23 @@ def index():
 
 @app.route('/start_recording', methods=['POST'])
 def start_recording():
-    r = sr.Recognizer()
-    audio_file = request.files['file']
+    file = request.files['file']
+    file_id = str(uuid.uuid4())
+    file.save(file_id)
 
-    # Save the audio file to disk
-    file_id = "audio.wav"
-    audio_file.save(file_id)
+    # Convert the audio to a supported format
+    audio = AudioSegment.from_file(file_id, format="webm")
+    audio.export(file_id + ".wav", format="wav")
 
-    with sr.AudioFile(file_id) as source:
-        audio_data = r.record(source)
+    with sr.AudioFile(file_id + ".wav") as source:
+        recognizer = sr.Recognizer()
+        audio_data = recognizer.record(source)
+        text = recognizer.recognize_google(audio_data)
 
-    try:
-        text = r.recognize_google(audio_data, language='en-US')
-        return jsonify({'text': text, 'file_id': file_id})
-    except sr.UnknownValueError:
-        return "Speech recognition failed. Please try again.", 400
-    except Exception as e:
-        return str(e), 500
+    os.remove(file_id)
+    os.remove(file_id + ".wav")
+
+    return jsonify({"text": text, "file_id": file_id})
 
 
 @app.route('/send_to_chatgpt', methods=['POST'])
