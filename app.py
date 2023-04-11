@@ -2,10 +2,8 @@ import io
 import openai
 import speech_recognition as sr
 from flask import Flask, render_template, request, jsonify
-from flask import Flask, request, jsonify
 import uuid
 import os
-import speech_recognition as sr
 from pydub import AudioSegment
 
 app = Flask(__name__)
@@ -13,11 +11,9 @@ app = Flask(__name__)
 # Configure OpenAI API key
 openai.api_key = ""
 
-
 @app.route('/')
 def index():
     return render_template('index.html')
-
 
 @app.route('/start_recording', methods=['POST'])
 def start_recording():
@@ -39,14 +35,9 @@ def start_recording():
 
     return jsonify({"text": text, "file_id": file_id})
 
-
 @app.route('/send_to_chatgpt', methods=['POST'])
 def send_to_chatgpt():
-    file_id = request.form['file_id']
-
-    with sr.AudioFile(file_id) as source:
-        audio_data = r.record(source)
-    text = r.recognize_google(audio_data, language='en-US')
+    text = request.form['text']
 
     response = openai.Completion.create(
         engine="text-davinci-002",
@@ -58,8 +49,9 @@ def send_to_chatgpt():
     )
 
     answer = response.choices[0].text.strip()
-    return jsonify({"answer": answer})
+    print("ChatGPT response:", answer)  # Print the response in the console
 
+    return jsonify({"answer": answer})
 
 if __name__ == '__main__':
     app.run(debug=True)

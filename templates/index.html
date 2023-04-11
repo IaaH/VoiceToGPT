@@ -37,7 +37,7 @@
                         contentType: false,
                     }).done(response => {
                         $('#text').text(response.text);
-                        $('#send-to-chatgpt').prop('disabled', false).data('file-id', response.file_id);
+                        $('#send-to-chatgpt').prop('disabled', false);
                     }).fail(error => {
                         alert(error.responseText);
                     });
@@ -50,9 +50,9 @@
         }
 
         function sendToChatGPT() {
-            const fileId = $('#send-to-chatgpt').data('file-id');
+            const text = $('#text').text();
 
-            $.post('/send_to_chatgpt', { file_id: fileId }).done(response => {
+            $.post('/send_to_chatgpt', { text: text }).done(response => {
                 $('#answer').text(response.answer);
             }).fail(error => {
                 alert(error.responseText);
